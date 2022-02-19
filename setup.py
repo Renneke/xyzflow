@@ -13,4 +13,9 @@ setup(name='xyzflow',
       author_email='florianrenneke@gmail.com',
       license='Apache License Version 2.0',
       packages=['xyzflow'],
+      install_requires=[
+          'networkx',
+          'matplotlib',
+          'diskcache'
+      ],
       zip_safe=False)
