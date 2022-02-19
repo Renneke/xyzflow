@@ -3,6 +3,16 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Compiled python modules.
+*.pyc
+
+# Setuptools distribution folder.
+/dist/
+
+# Python egg metadata, regenerated from source files by setuptools.
+/*.egg-info
+
+
 # C extensions
 *.so
 
