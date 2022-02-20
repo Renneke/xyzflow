@@ -17,7 +17,7 @@ __pycache__/
 *.so
 .xyzcache
 
-docs/source/xyzflow
+docs/source/_autosummary
 
 # Distribution / packaging
 .Python
