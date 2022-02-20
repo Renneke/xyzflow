@@ -16,6 +16,14 @@ setup(name='xyzflow',
       install_requires=[
           'networkx',
           'matplotlib',
-          'diskcache'
+          'diskcache',
+          'colorama',
+          'tabulate',
+          'pandas'
       ],
+      entry_points = {
+              'console_scripts': [
+                  'xyzflow = xyzflow:main',                  
+              ],              
+          },
       zip_safe=False)

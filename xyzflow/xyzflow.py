@@ -11,15 +11,19 @@ import os
 import argparse
 import importlib.util
 from pprint import pprint
-        
+from colorama import Back, Style, Fore
+from tabulate import tabulate
+import pandas as pd
+import sys
+
 class Task:
     
     unique_counter = 0
     
-    def __init__(self, cache_location=".xyzcache", cacheable:bool=True) -> None:
+    def __init__(self, cache_location=".xyzcache", cacheable:bool=True, invalidator=None) -> None:
         self.input_unnamed : list[Task] = []
         self.input_named : dict[str, Task] = {}
-        self.invalidator = None
+        self.invalidator = invalidator
         self.cacheable = cacheable
         self.id = Task.unique_counter
         Task.unique_counter += 1
@@ -48,10 +52,7 @@ class Task:
                    
     def __mul__(self, other):
         return Multiplication(self, other)
-                
-    def _is_evaluated_task(self, var):
-        return isinstance(var, tuple) and len(var)==2 and isinstance(var[1], Task)
-                
+                                
     def parse_input(self, tasks:list):
         input = []
         for task in tasks:
@@ -76,16 +77,12 @@ class Task:
             graph.add_edge(self, input_task)                        
             input_task._create_digraph(graph=graph)
         return graph
-            
-    def _call(self, execution_queue):
-        for input_task in self.all_input_tasks:                                  
-            input_task._call(execution_queue=execution_queue)
-        
+                    
     def visualize(self):                     
-        graph = self._create_digraph()
-        color_map = ['blue' if node == self else 'green' for node in graph]    
-        nx.draw(graph, with_labels=True, font_weight='bold', node_color=color_map)
-        plt.show()
+        graph = self._create_digraph() # pragma: no cover
+        color_map = ['blue' if node == self else 'green' for node in graph]     # pragma: no cover
+        nx.draw(graph, with_labels=True, font_weight='bold', node_color=color_map) # pragma: no cover
+        plt.show() # pragma: no cover
         
     def status(self):    
         graph = self._create_digraph()
@@ -105,7 +102,6 @@ class Task:
         for steps in range(0, len(graph)):
             leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
             
-            from colorama import Back, Style, Fore
             column = []
             for node in leaf_nodes:
                 addColumn(node, column)
@@ -117,8 +113,6 @@ class Task:
         addColumn(self, column)
         table += [column]
         
-        from tabulate import tabulate
-        import pandas as pd
         df = pd.DataFrame(table).T
         print(tabulate(df,showindex=False,headers=[f"Step {i}" for i in range(0, len(df.columns))]))
             
@@ -140,8 +134,8 @@ class Task:
         
         # First check if input data is valid
         for task in self.all_input_tasks:
-            if not task.has_run:
-                raise Exception(f"The task {task} has not been run but it is an input to {self}. This should never happen! BUG found!")
+            if not task.has_run: # pragma: no cover
+                raise Exception(f"The task {task} has not been run but it is an input to {self}. This should never happen! BUG found!") # pragma: no cover
             if task.failed:
                 self.failed = True
                 self.has_run = True
@@ -156,20 +150,27 @@ class Task:
                 log.write(f"[INFO] Start execution of {self} at {start}\n")
                     
                 # check if task is already in the cache
-                if self.cacheable and key in cache:
+                self.read_from_cache = True
+                if not self.cacheable:
+                    self.read_from_cache = False
+                if key not in cache:
+                    self.read_from_cache = False
+                if self.invalidator and self.invalidator():
+                    self.read_from_cache = False
+                    log.write(f"[INFO] {self.__class__.__name__} - Invalidator returned True: Do not use the cache!\n")
+                                    
+                if self.read_from_cache:
                     data = cache.get(key)
                     
                     self.result = data["result"]
                     self.failed = False
                     self.has_run = True
-                    self.read_from_cache = True
                     log.write(f"[INFO] {self.__class__.__name__}: {self} is read from cache: Result {self.result}\n")
                     self.execution_time = time.time() - start
                     return
                 
-                log.write(f"[INFO] {self.__class__.__name__}: {self} not using cache because no suitable entry found\n")    
-                self.read_from_cache = False
-                
+            
+                log.write(f"[INFO] {self.__class__.__name__}: {self} not using cache because no suitable entry found\n")                                    
                 log.write(f"[INFO] {self.__class__.__name__}: {self} starts\n")   
                 self.in_progress = True
                 try:
@@ -217,7 +218,7 @@ class Task:
         return EvaluatedValue(self.result, self)
         
     def run(self, *args: any, **kwargs: any):
-        raise Exception(f"No run method has been implemented for {self.__class__.__name__}.")
+        raise Exception(f"No run method has been implemented for {self.__class__.__name__}.") # pragma: no cover
 
 
     
@@ -233,10 +234,8 @@ class Parameter(Task):
         self.read_from_cache = False
         self.result = self.value
         self.execution_time = 0
-        
-    def run(self, *args: any, **kwargs: any):
-        return self.value
-    
+               
+            
     def __repr__(self) -> str:
         return f"{self.description}: {self.value}"
     
@@ -245,22 +244,21 @@ class EvaluatedValue(Task):
     def __init__(self, value:any, parent_task:Task=None) -> None:
         super().__init__(cacheable=False)
 
+        self.failed = False
+        
+        self.result = value
         if parent_task:
             self.input_named = {
                 "__do_not_execute": parent_task
-            }                
-        self.result = value
-            
+            }           
+            self.failed = parent_task.failed   # take over status of parent task  
+        
             
         # We know already the result -> no need to run it
-        self.failed = False
         self.has_run = True
         self.read_from_cache = False
         self.execution_time = 0
-    
-    def run(self, *args: any, **kwargs: any):
-        return self.result
-    
+        
     def __repr__(self) -> str:
         return f"{self.result}"
         
@@ -325,22 +323,25 @@ def flow(flow_module, **kwargs)->Task:
             
     return flow_module.main()
       
+def get_flow_parameter(flow_module):
+    result = flow_module.main()
+    graph = result._create_digraph()
+    leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
+    
+    parameters = {n.description: n.value for n in leaf_nodes if n.__class__.__name__=="Parameter"}
+    return parameters
+      
 def inspect_parameters(args):
     
     spec = importlib.util.spec_from_file_location("flow", args.py)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    
-    result = module.main()
-    graph = result._create_digraph()
-    leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
-    
-    parameters = {n.description: n.value for n in leaf_nodes if n.__class__.__name__=="Parameter"}
-    
+    parameters = get_flow_parameter(module)
     pprint(parameters)
+    return parameters
     
     
-if __name__ == "__main__":   
+def main(): 
     parser = argparse.ArgumentParser(description='XYZflow cli tool')
     
     subparsers = parser.add_subparsers(help='commands')
@@ -348,5 +349,5 @@ if __name__ == "__main__":
     parser_parameters.add_argument('py', help='Python file containing the flow (must have a main())')
     parser_parameters.set_defaults(func=inspect_parameters)
     
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
     args.func(args)
