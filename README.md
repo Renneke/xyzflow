@@ -34,7 +34,8 @@ A flow consists out of:
 
 ### How does it work?
 
-Everything is a `Task` (even Parameters). Inside of the `main()` you define a flow. A flow is a sequence of tasks that shall be executed. You can give the results of a task as input parameter to another task.
+Everything is a `Task` (even Parameters). Inside of the `main()` you define a flow. 
+A flow is a sequence of tasks that shall be executed. You can give the results of a task as input parameter to another task.
 That way, we create an execution graph.
 Any task can be evaluted at any time with the `()` operator.
 The result can be used to continue with a flow or just to get the final result of a flow.

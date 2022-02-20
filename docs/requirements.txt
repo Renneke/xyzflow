@@ -1,3 +1,3 @@
-myst-parser
 sphinx
-sphinx-material
+sphinx-inline-tabs
+sphinx-rtd-theme
