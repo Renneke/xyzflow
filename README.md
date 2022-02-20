@@ -1,6 +1,9 @@
 # XYZFlow
 Powerful but simple orchestration framework for python.
 
+## Documentation
+
+You find the latest documentation on readthedocs.io: https://xyzflow.readthedocs.io/en/latest/.
 ## Installing
 
 ``` bash
