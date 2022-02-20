@@ -9,7 +9,7 @@ Core Framework
 .. rubric:: Classes
 
 .. autosummary::
-   :toctree: xyzflow
+   :toctree: _autosummary
    :template: custom-module-template.rst
 
    xyzflow.Task
@@ -17,7 +17,7 @@ Core Framework
 .. rubric:: Built-In Tasks
 
 .. autosummary::
-   :toctree: xyzflow
+   :toctree: _autosummary
    :template: custom-module-template.rst
 
    xyzflow.Parameter
@@ -29,6 +29,6 @@ Core Framework
 .. rubric:: Functions
 
 .. autosummary::
-   :toctree: xyzflow
+   :toctree: _autosummary
 
    xyzflow.flow
