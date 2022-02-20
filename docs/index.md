@@ -1,37 +1,37 @@
-## Welcome to GitHub Pages
+# XYZFlow
+Powerful but simple orchestration framework for python.
 
-You can use the [editor on GitHub](https://github.com/Renneke/xyzflow/edit/main/docs/index.md) to maintain and preview the content for your website in Markdown files.
+## Installing
 
-Whenever you commit to this repository, GitHub Pages will run [Jekyll](https://jekyllrb.com/) to rebuild the pages in your site, from the content in your Markdown files.
-
-### Markdown
-
-Markdown is a lightweight and easy-to-use syntax for styling your writing. It includes conventions for
-
-```markdown
-Syntax highlighted code block
-
-# Header 1
-## Header 2
-### Header 3
-
-- Bulleted
-- List
-
-1. Numbered
-2. List
-
-**Bold** and _Italic_ and `Code` text
-
-[Link](url) and ![Image](src)
+``` bash
+pip install xyzflow
 ```
 
-For more details see [Basic writing and formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax).
+## Getting Started
 
-### Jekyll Themes
+You can write a flow in a few lines of code:
+``` python
+from xyzflow import Parameter
 
-Your Pages site will use the layout and styles from the Jekyll theme you have selected in your [repository settings](https://github.com/Renneke/xyzflow/settings/pages). The name of this theme is saved in the Jekyll `_config.yml` configuration file.
+# Define parameters
+x = Parameter(value=10, description="X")
+y = Parameter(value=10, description="Y")
+  
+def main():
+    return x + y
+       
+if __name__ == "__main__":   
+    print(main()()) # Execute flow and print the result
+```
 
-### Support or Contact
+A flow consists out of:
+1) Parameter definitions in the global scope
+2) A `main()` method that returns the resulting Task
+3) Optionally: A main if clause that executes your defined flow
 
-Having trouble with Pages? Check out our [documentation](https://docs.github.com/categories/github-pages-basics/) or [contact support](https://support.github.com/contact) and we’ll help you sort it out.
+### How does it work?
+
+Everything is a `Task` (even Parameters). Inside of the `main()` you define a flow. A flow is a sequence of tasks that shall be executed. You can give the results of a task as input parameter to another task.
+That way, we create an execution graph.
+Any task can be evaluted at any time with the `()` operator.
+The result can be used to continue with a flow or just to get the final result of a flow.
