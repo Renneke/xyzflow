@@ -17,10 +17,25 @@ import pandas as pd
 import sys
 
 class Task:
-    
+    """Task
+
+    Raises:
+        Exception: _description_
+        Exception: _description_
+
+    Returns:
+        _type_: _description_
+    """
     unique_counter = 0
     
     def __init__(self, cache_location=".xyzcache", cacheable:bool=True, invalidator=None) -> None:
+        """Task Constructor
+
+        Args:
+            cache_location (str, optional): _description_. Defaults to ".xyzcache".
+            cacheable (bool, optional): _description_. Defaults to True.
+            invalidator (_type_, optional): _description_. Defaults to None.
+        """
         self.input_unnamed : list[Task] = []
         self.input_named : dict[str, Task] = {}
         self.invalidator = invalidator
@@ -85,6 +100,8 @@ class Task:
         plt.show() # pragma: no cover
         
     def status(self):    
+        """Render a table of the current status of this task and its parents
+        """
         graph = self._create_digraph()
         
         def addColumn(node, column):
@@ -241,6 +258,11 @@ class Parameter(Task):
     
 
 class EvaluatedValue(Task):
+    """Evaluated Value Task
+
+    Args:
+        Task (_type_): _description_
+    """
     def __init__(self, value:any, parent_task:Task=None) -> None:
         super().__init__(cacheable=False)
 
@@ -263,6 +285,11 @@ class EvaluatedValue(Task):
         return f"{self.result}"
         
 class Add(Task):
+    """Addition Task
+
+    Args:
+        Task (_type_): _description_
+    """
     def __init__(self, *args:list[Union[Task,int,float]]) -> None:
         super().__init__(cacheable=True)        
         self.input_unnamed = self.parse_input(args)
@@ -274,6 +301,11 @@ class Add(Task):
         return sum
 
 class Sub(Task):
+    """Subtraction Task
+
+    Args:
+        Task (_type_): _description_
+    """
     def __init__(self, *args:list[Union[Task,int,float]]) -> None:
         super().__init__(cacheable=True)        
         self.input_unnamed = self.parse_input(args)
@@ -288,6 +320,11 @@ class Sub(Task):
         return sum
     
 class Multiplication(Task):
+    """Multiplication Task
+
+    Args:
+        Task (_type_): _description_
+    """
     def __init__(self, *args:list[Union[Task,int,float]]) -> None:
         super().__init__(cacheable=True)        
         self.input_unnamed = self.parse_input(args)
