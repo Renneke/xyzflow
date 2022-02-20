@@ -1,3 +1,9 @@
 sphinx
 sphinx-inline-tabs
 sphinx-rtd-theme
+networkx
+matplotlib
+diskcache
+colorama
+tabulate
+pandas
