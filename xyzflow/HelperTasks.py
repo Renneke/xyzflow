@@ -9,6 +9,8 @@ class Add(Task):
         Task (_type_): _description_
     """
     def __init__(self, *args:list[Union[Task,int,float]]) -> None:
+        """Initializing an addition task
+        """
         super().__init__(cacheable=True)        
         self.input_unnamed = self.parse_input(args)
             

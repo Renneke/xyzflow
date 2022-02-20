@@ -1,3 +1,8 @@
+"""
+# Task Page
+This is some introduction to Tasks in xyzflow.
+"""
+
 from unittest import TextTestRunner
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -10,6 +15,7 @@ import os
 from colorama import Back, Style
 from tabulate import tabulate
 import pandas as pd
+
 class Task:
     """Task
 
@@ -79,6 +85,14 @@ class Task:
         return list(self.input_named.values()) + list(self.input_unnamed)
         
     def _create_digraph(self, graph=None):
+        """Create the directed dependency graph
+
+        Args:
+            graph (networkx.graph, optional): The nx.DiGraph instance. Defaults to None.
+
+        Returns:
+            graph: The finished graph
+        """
         if not graph:
             graph = nx.DiGraph()
             graph.add_node(self)
@@ -139,7 +153,13 @@ class Task:
         
         
     def _run(self, *args, **kwargs):
-        """Execution of the run method
+        """Run the flow
+
+        Raises:
+            Exception: _description_
+
+        Returns:
+            _type_: _description_
         """
         if self.has_run:
             return # no need to run it again if it already has run
@@ -208,6 +228,11 @@ class Task:
                 
             
     def __call__(self, *args: any, **kwargs: any) -> any:
+        """Call operator
+
+        Returns:
+            any: _description_
+        """
                                  
         graph = self._create_digraph()
                           
@@ -232,6 +257,11 @@ class Task:
         return EvaluatedValue(self.result, self)
         
     def run(self, *args: any, **kwargs: any):
+        """Run method (to be overwritten by tasks)
+
+        Raises:
+            Exception: _description_
+        """
         raise Exception(f"No run method has been implemented for {self.__class__.__name__}.") # pragma: no cover
 
 

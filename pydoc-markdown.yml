@@ -13,6 +13,7 @@ renderer:
     - title: API Documentation
       contents:
       - xyzflow.*
+      - xyzflow.Parameter
   mkdocs_config:
     site_name: XYZFlow
     theme: readthedocs

@@ -1,3 +1,6 @@
+"""
+Flows
+"""
 from .Task import Task
 
 def flow(flow_module, **kwargs)->Task:
@@ -24,7 +27,15 @@ def flow(flow_module, **kwargs)->Task:
             
     return flow_module.main()
       
-def get_flow_parameter(flow_module):
+def get_flow_parameter(flow_module) -> dict:
+    """Get the parameters of a flow.
+
+    Args:
+        flow_module (module): The flow module that you imported (e.g. import flowA).
+
+    Returns:
+        dict: Dictionary with description:default_value pairs
+    """
     result = flow_module.main()
     graph = result._create_digraph()
     leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
