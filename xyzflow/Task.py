@@ -3,6 +3,7 @@
 This is some introduction to Tasks in xyzflow.
 """
 
+from typing import Union
 from unittest import TextTestRunner
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -70,15 +71,29 @@ class Task:
     def __mul__(self, other):
         import xyzflow.HelperTasks as HelperTasks
         return HelperTasks.Multiplication(self, other)
-                                
-    def parse_input(self, tasks:list):
-        input = []
-        for task in tasks:
-            if not isinstance(task, Task):
-                input.append(EvaluatedValue(task)) # convert to task if it is not one
-            else:
-                input.append(task)
-        return input
+                 
+    def parse_input(self, tasks:Union[list,dict]) -> Union[list,dict]:
+        
+        if isinstance(tasks, dict):
+            input = {}
+            for name, task in tasks.items():
+                if not isinstance(task, Task):
+                    input[name] = EvaluatedValue(task) # convert to task if it is not one
+                else:
+                    input[name] = task
+            return input
+        
+        elif isinstance(tasks, list) or isinstance(tasks, tuple):
+            input = []
+            for task in tasks:
+                if not isinstance(task, Task):
+                    input.append(EvaluatedValue(task)) # convert to task if it is not one
+                else:
+                    input.append(task)
+            return input
+        else:
+            raise Exception("Parse inputs failed because the input argument is not a list or a dict!")
+        
                 
     @property
     def all_input_tasks(self)->list[any]:
@@ -291,3 +306,51 @@ class EvaluatedValue(Task):
         
     def __repr__(self) -> str:
         return f"{self.result}"
+    
+    
+    
+    
+
+def task(cache_location=".xyzflow", cacheable=True):
+    """Task decorator
+
+    Args:
+        cache_location (str, optional): Cache location of this task. Defaults to ".xyzflow".
+        cacheable (bool, optional): Is this task cacheable? Defaults to True.
+    """
+    
+    def inner(func):
+        taskname = func.__name__
+        
+        class WrapperTask(Task):
+            def __init__(self, cache_location, cacheable, *args, **kwargs) -> None:
+                super().__init__(cache_location, cacheable)
+                self.input_unnamed = self.parse_input(args)
+                self.input_named = self.parse_input(kwargs)
+                
+            def __repr__(self) -> str:
+                return f"{taskname}"
+                
+            def get_inputs(self):
+                args = [v.result for v in self.input_unnamed]
+                kwargs = {name: v.result for name, v in self.input_named.items()}
+                return args, kwargs
+                
+            def run(self, *args: any, **kwargs: any):
+                list_input, dict_input = self.get_inputs()
+                
+                args_signiture = inspect.signature(func)
+                
+                to_be_deleted = [k for k in kwargs.keys() if k not in args_signiture.parameters]
+                for key in to_be_deleted:
+                    kwargs.pop(key)
+                    
+                return func(*list_input, *args, **dict_input, **kwargs)
+    
+        def factory(*args, **kwargs):
+            return WrapperTask(cache_location, cacheable, *args, **kwargs)
+    
+        return factory
+    
+    return inner
+    
