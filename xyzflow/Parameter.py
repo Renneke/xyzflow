@@ -2,7 +2,9 @@
 # Parameter Page
 This is some introduction to Parameters in xyzflow.
 """
+from ast import Param
 from .Task import Task
+import inspect
 
 
 class Parameter(Task):
@@ -19,24 +21,47 @@ class Parameter(Task):
     Args:
         Task (_type_): _description_
     """
-    def __init__(self, value:any, description:str="") -> None:
-        """Parameter initialisation
+    
+    current_prefix = ""
+    parameters = {} # Global storage of parameters
+    
+    @classmethod
+    def setup_parameters(cls, parameters):
+        """Append the current prefix and add the parameters to the global scope
 
         Args:
-            value (any): _description_
-            description (str, optional): _description_. Defaults to "".
+            parameters (_type_): _description_
         """
+        cls.parameters.update({Parameter.current_prefix+k:v for k,v in Task.parse_input(parameters).items()})
+        
+    def __init__(self, name:str, value:any) -> None:
         super().__init__(cacheable=False)
-        self.value = value
-        self.description = description
+        
+        self.name = name
         
         # We know already the result -> no need to run it
+        self.value = value
         self.failed = False
         self.has_run = True
         self.read_from_cache = False
         self.result = self.value
         self.execution_time = 0
-                           
+               
+        
+    @classmethod    
+    def create(cls, name:str, value:any):        
+        """
+        Parameter factory. Must be used to support hierarchy
+        """            
+        name = Parameter.current_prefix + name
+        if name in Parameter.parameters:
+            para = Parameter.parameters[name] # completly replace this instance!
+            return para # nothing to anymore
+        else:
+            Parameter.parameters[name] = Parameter(name, value)
+                
+        return Parameter.parameters[name]
+                               
     def __repr__(self) -> str:
-        return f"{self.description}: {self.value}"
+        return f"{self.name}: {self.value}"
     

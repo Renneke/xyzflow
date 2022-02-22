@@ -1,11 +1,12 @@
 from xyzflow import Parameter
 
-# Define parameters
-x = Parameter(value=10, description="XA")
-y = Parameter(value=10, description="YA")
   
 def main():
-    return x + y
+    # Define parameters
+    x = Parameter.create(value=10, name="XA")
+    y = Parameter.create(value=10, name="YA")    
+    z = x + y
+    return z
        
 if __name__ == "__main__":   
     print(main()()) # Execute flow and print the result

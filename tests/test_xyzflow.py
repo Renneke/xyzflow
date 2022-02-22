@@ -36,15 +36,15 @@ def test_invalidator():
     
 def test_add():
     shutil.rmtree(".xyzcache", ignore_errors=True)
-    a = Parameter(value=1)
-    b = Parameter(value=2)
+    a = Parameter(value=1, name="1")
+    b = Parameter(value=2, name="2")
     c = a+b
     assert c().result == 3
     
 def test_evaluated_value():
     shutil.rmtree(".xyzcache", ignore_errors=True)
-    a = Parameter(value=1)
-    b = Parameter(value=2)
+    a = Parameter(value=1, name="1")
+    b = Parameter(value=2, name="2")
     c = a*b
     c.status()
     d = Add(c(), 4)
@@ -62,24 +62,6 @@ def test_evaluated_value():
     assert x.result == None
     assert y.failed == True
     
-def test_flow():
-    shutil.rmtree(".xyzcache", ignore_errors=True)
-    a = Parameter(1, "a")
-    result_of_flowA = flow(flowA, x=a)
-    assert result_of_flowA().result == 11
-    assert get_flow_parameter(flowA) == {"a": 1, "YA": 10}
-    
-    class dummy_args:
-        py = "tests/flowA.py"
-    
-    
-    assert inspect_parameters(dummy_args) == {"XA": 10, "YA": 10}
-    
-    with pytest.raises(Exception):
-        flow(flowA, l=10)
-    
-    with pytest.raises(Exception):
-        flow(flowA, __file__=10)
     
 def test_error_in_task():
     shutil.rmtree(".xyzcache", ignore_errors=True)

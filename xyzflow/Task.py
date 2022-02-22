@@ -6,7 +6,6 @@ This is some introduction to Tasks in xyzflow.
 from typing import Union
 from unittest import TextTestRunner
 import networkx as nx
-import matplotlib.pyplot as plt
 import threading
 from diskcache import Cache
 import pickle
@@ -15,7 +14,6 @@ import time
 import os
 from colorama import Back, Style
 from tabulate import tabulate
-import pandas as pd
 
 class Task:
     """Task
@@ -71,8 +69,9 @@ class Task:
     def __mul__(self, other):
         import xyzflow.HelperTasks as HelperTasks
         return HelperTasks.Multiplication(self, other)
-                 
-    def parse_input(self, tasks:Union[list,dict]) -> Union[list,dict]:
+
+    @classmethod                 
+    def parse_input(cls, tasks:Union[list,dict]) -> Union[list,dict]:
         
         if isinstance(tasks, dict):
             input = {}
@@ -123,6 +122,8 @@ class Task:
         graph = self._create_digraph() # pragma: no cover
         color_map = ['blue' if node == self else 'green' for node in graph]     # pragma: no cover
         nx.draw(graph, with_labels=True, font_weight='bold', node_color=color_map) # pragma: no cover
+        
+        import matplotlib.pyplot as plt
         plt.show() # pragma: no cover
         
     def status(self):    
@@ -156,6 +157,7 @@ class Task:
         addColumn(self, column)
         table += [column]
         
+        import pandas as pd
         df = pd.DataFrame(table).T
         print(tabulate(df,showindex=False,headers=[f"Step {i}" for i in range(0, len(df.columns))]))
             

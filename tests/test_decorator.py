@@ -11,7 +11,7 @@ def power2(a, n, logger):
     return a**n*2
 
 def test_decorator():
-    a = Parameter(value=3, description="test")
+    a = Parameter(value=3, name="test")
     b = a + a
     c = power(b, n=a)
     assert c().result == (3+3)**3
