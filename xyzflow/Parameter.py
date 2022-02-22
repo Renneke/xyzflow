@@ -26,6 +26,11 @@ class Parameter(Task):
     parameters = {} # Global storage of parameters
     
     @classmethod
+    def reset(cls):
+        cls.parameters.clear()
+        cls.current_prefix = ""
+        
+    @classmethod
     def setup_parameters(cls, parameters):
         """Append the current prefix and add the parameters to the global scope
 

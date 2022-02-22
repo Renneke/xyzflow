@@ -1,13 +1,10 @@
-import sys
-sys.path.insert(0, "..")
-sys.path.insert(0, ".")
-
 import shutil
-from xyzflow import task, Parameter, Add, get_flow_parameter, flow, inspect_parameters
+from xyzflow import task, Parameter, Add, get_flow_parameter, flow, inspect_parameters, Flow
 from tests import flowA
 import pytest
 
 def test_module_flow():
+    Parameter.reset()
     xy = Parameter.create(name="a", value=100)
 
     b = flow(flowA, name="I1", parameters={"XA": xy})
@@ -18,6 +15,7 @@ def test_module_flow():
     
 
 def test_flow():
+    Parameter.reset()
     shutil.rmtree(".xyzcache", ignore_errors=True)
     a = Parameter(value=1, name="a")
     result_of_flowA = flow(flowA, "flowA", XA=a)
@@ -35,3 +33,15 @@ def test_flow():
     
     with pytest.raises(Exception):
         flow(flowA, __file__=10)
+        
+class MyFlow(Flow):
+    def main(self):
+        a = Parameter.create("a", 10)
+        b = Parameter.create("b", 20)
+        return a+b
+    
+    
+def test_class_flow():
+    Parameter.reset()
+    a = flow(MyFlow, "I1", b=11)
+    assert a().result == 21

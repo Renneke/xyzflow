@@ -16,6 +16,7 @@ class SimpleTask(Task):
         print("Hallo")
 
 def test_invalidator():
+    Parameter.reset()
     shutil.rmtree(".xyzcache", ignore_errors=True)
     x = SimpleTask()
     x()
@@ -35,6 +36,7 @@ def test_invalidator():
     
     
 def test_add():
+    Parameter.reset()
     shutil.rmtree(".xyzcache", ignore_errors=True)
     a = Parameter(value=1, name="1")
     b = Parameter(value=2, name="2")
@@ -42,6 +44,7 @@ def test_add():
     assert c().result == 3
     
 def test_evaluated_value():
+    Parameter.reset()
     shutil.rmtree(".xyzcache", ignore_errors=True)
     a = Parameter(value=1, name="1")
     b = Parameter(value=2, name="2")
@@ -64,6 +67,7 @@ def test_evaluated_value():
     
     
 def test_error_in_task():
+    Parameter.reset()
     shutil.rmtree(".xyzcache", ignore_errors=True)
     x = Add(1, "STRING") # Can't be added    
     a = x()
@@ -80,6 +84,7 @@ def test_error_in_task():
     assert b.has_run == True
     
 def test_cli(capsys):
+    Parameter.reset()
     subprocess.check_output("xyzflow --help", shell=True)
     
     sys.argv = ["", "parameters", "tests/flowA.py"]

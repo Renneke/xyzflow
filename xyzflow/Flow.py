@@ -4,8 +4,12 @@ Flows
 from ast import Param
 from .Task import Task
 from .Parameter import Parameter
-
-def flow(flow_module, name:str, parameters=None, **kwargs)->Task:
+import inspect
+class Flow:
+    def main():
+        raise Exception("You need to override this function and let it return your resulting task.")
+    
+def flow(flow, name:str, parameters=None, **kwargs)->Task:
     """Add another flow to this one and return its result task.
     The flow_module requires a `main()->Task` function that returns the result.
     Parameters have to be defined on the top level.
@@ -31,7 +35,12 @@ def flow(flow_module, name:str, parameters=None, **kwargs)->Task:
     Parameter.setup_parameters(parameters)
     Parameter.setup_parameters(kwargs)
     
-    result = flow_module.main()
+    if inspect.isclass(flow):
+        result = flow().main()
+    elif inspect.ismodule(flow):
+        result = flow.main()
+    else:
+        raise Exception("First parameter has to be a module (defining a main()) or a class (defining a main())")
     
     Parameter.current_prefix = backup # restore old prefix
     return result
