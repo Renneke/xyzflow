@@ -1,3 +1,5 @@
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/Renneke/xyzflow.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/Renneke/xyzflow/alerts/)
+
 # XYZFlow
 Powerful but simple orchestration framework for python.
 
