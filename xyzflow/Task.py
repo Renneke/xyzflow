@@ -93,6 +93,15 @@ class Task:
         else:
             raise Exception("Parse inputs failed because the input argument is not a list or a dict!")
         
+    def get_parameters(self) -> dict:
+        """Create the current dependency graph and extract all leaf nodes of type Parameter = Parameters
+
+        Returns:
+            dict: All parameters in form of a dictionary
+        """
+        graph = self._create_digraph()
+        leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
+        return {n.name: n for n in leaf_nodes if n.__class__.__name__=="Parameter"}
                 
     @property
     def all_input_tasks(self)->list[any]:

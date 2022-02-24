@@ -39,10 +39,11 @@ class Parameter(Task):
         """
         cls.parameters.update({Parameter.current_prefix+k:v for k,v in Task.parse_input(parameters).items()})
         
-    def __init__(self, name:str, value:any) -> None:
+    def __init__(self, name:str, value:any, description:str="") -> None:
         super().__init__(cacheable=False)
         
         self.name = name
+        self.description = description
         
         # We know already the result -> no need to run it
         self.value = value
@@ -54,7 +55,7 @@ class Parameter(Task):
                
         
     @classmethod    
-    def create(cls, name:str, value:any):        
+    def create(cls, name:str, value:any, description:str=""):        
         """
         Parameter factory. Must be used to support hierarchy
         """            
@@ -63,7 +64,7 @@ class Parameter(Task):
             para = Parameter.parameters[name] # completly replace this instance!
             return para # nothing to anymore
         else:
-            Parameter.parameters[name] = Parameter(name, value)
+            Parameter.parameters[name] = Parameter(name, value, description=description)
                 
         return Parameter.parameters[name]
                                

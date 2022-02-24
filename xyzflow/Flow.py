@@ -5,10 +5,30 @@ from ast import Param
 from .Task import Task
 from .Parameter import Parameter
 import inspect
+import pickle
+import os
 class Flow:
     def main():
         raise Exception("You need to override this function and let it return your resulting task.")
     
+def get_parameter_file_location(flow):
+    return f"{flow.__name__}.json"    
+
+def create_parameters(flow, result_task):
+    path = get_parameter_file_location(flow)
+    with open(path, "wb") as f:
+        pickle.dump(result_task.get_parameters(), f)
+    print(f"[INFO] Stored parameters of flow {flow} to {path}")
+    
+def load_parameters(flow):
+    path = get_parameter_file_location(flow)
+    if not os.path.isfile(path):
+        return False
+    with open(path, "rb") as f:
+        Parameter.parameters = pickle.load(f)
+    print(f"[INFO] Restored parameters of {flow} from {path}")
+    return True
+
 def flow(flow, name:str, parameters=None, **kwargs)->Task:
     """Add another flow to this one and return its result task.
     The flow_module requires a `main()->Task` function that returns the result.
@@ -43,20 +63,32 @@ def flow(flow, name:str, parameters=None, **kwargs)->Task:
         raise Exception("First parameter has to be a module (defining a main()) or a class (defining a main())")
     
     Parameter.current_prefix = backup # restore old prefix
+    
+    # Store the parameters if the run was successfull
+    if not result.failed:
+        create_parameters(flow, result)
+        
     return result
       
-def get_flow_parameter(flow_module) -> dict:
+def get_flow_parameter(flow) -> dict:
     """Get the parameters of a flow.
 
     Args:
-        flow_module (module): The flow module that you imported (e.g. import flowA).
+        flow (class or module): The flow module that you imported (e.g. import flowA).
 
     Returns:
         dict: Dictionary with description:default_value pairs
     """
-    result = flow_module.main()
-    graph = result._create_digraph()
-    leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
-    
-    parameters = {n.name: n.value for n in leaf_nodes if n.__class__.__name__=="Parameter"}
-    return parameters
+        
+    if inspect.isclass(flow):
+        result = flow().main()
+    elif inspect.ismodule(flow):
+        result = flow.main()
+    else:
+        raise Exception("First parameter has to be a module (defining a main()) or a class (defining a main())")
+        
+    # Store the parameters if the run was successfull
+    if not result.failed:
+        create_parameters(flow, result)
+        
+    return result.get_parameters()
