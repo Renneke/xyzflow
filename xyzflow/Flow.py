@@ -1,14 +1,10 @@
 """
 Flows
 """
-from ast import Param
 from .Task import Task
 from .Parameter import Parameter
 import inspect
-import pickle
-import os
 import json
-import errno
 
 class Flow:
     """Abstract class to define a Flow.
