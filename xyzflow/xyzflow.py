@@ -51,7 +51,7 @@ def inspect_parameters(path_or_module:str)->dict:
         module = __import__(path_or_module)
         
     parameters = get_flow_parameter(module)
-    pprint(parameters)
+    pprint({k:v.result for k,v in parameters.items()})
     return parameters
     
     

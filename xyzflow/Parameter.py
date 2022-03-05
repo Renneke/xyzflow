@@ -50,7 +50,22 @@ class Parameter(Task):
         self.read_from_cache = False
         self.result = self.value
         self.execution_time = 0
+        
+    def set(self, value):
+        self.value = value
+        self.result = value        
                
+    def to_dict(self)->dict:
+        """Convert this parameter to a dictionary so that it can be stored
+
+        Returns:
+            dict: Dictionary with all important stuff
+        """
+        return {
+            "name": self.name,
+            "description": self.description,
+            "value": self.value
+        }
         
     @classmethod    
     def create(cls, name:str, value:any, description:str=""):        

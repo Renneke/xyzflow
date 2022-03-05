@@ -5,7 +5,7 @@ from .Task import Task
 from .Parameter import Parameter
 import inspect
 import json
-
+import os
 class Flow:
     """Abstract class to define a Flow.
     Just override the `main()` method.
@@ -51,20 +51,31 @@ def save_parameters(flow, path:str):
     """
     result_task = get_task_from_flow(flow)
     with open(path, "w") as f:
-        json.dump(result_task.get_parameters(), f, indent=4)
+        json.dump({k:v.to_dict() for k,v in result_task.get_parameters().items()}, f, indent=4)
     print(f"[INFO] Stored parameters of flow {flow} to {path}")
     
-def load_parameters(path:str):
+def load_parameters(path:str)->bool:
     """Load parameters from a json file.
     The parameters will be placed inside Parameter.parameters and are available globally.
     All parameters that will be created via `Parameter.create()` with the same name will take the values inside of this dictionary.
 
     Args:
         path (str): Path to a json formatted file (created via `save_parameters()`)
+        
+    Returns:
+        bool: True if loading was successfull. False if file does not exist.
     """    
+    if not os.path.isfile(path):
+        return False
+        
+    Parameter.reset()
+     
     with open(path, "r") as f:
-        Parameter.parameters = json.load(f)
+        for k,v in json.load(f).items():
+            Parameter.parameters[k] = Parameter(v["name"], v["value"], v["description"])
+            
     print(f"[INFO] Restored parameters from {path}")
+    return True
 
 
 def flow(flow, name:str=None, parameters:dict=None, **kwargs)->Task:

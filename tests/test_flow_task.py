@@ -34,7 +34,7 @@ def test_flow():
     assert result_of_flowA() == 11
     assert list(get_flow_parameter(flowA).keys()) == ["XA", "YA"]
     
-    assert str(inspect_parameters("tests/flowA.py")) == "{'XA': 10, 'YA': 10}"
+    assert str({k:v.value for k,v in inspect_parameters("tests/flowA.py").items()}) == "{'XA': 10, 'YA': 10}"
         
         
 class MyFlow(Flow):

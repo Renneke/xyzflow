@@ -27,6 +27,7 @@ class Task:
     """
     unique_counter = 0
     cache_location = ".xyzcache" 
+    callbacks = []    
     
     global_batch_count = 0 # keep track of the batch counter
     
@@ -68,6 +69,16 @@ class Task:
         import xyzflow.HelperTasks as HelperTasks
         return HelperTasks.Multiplication(self, other)
 
+    
+    @classmethod 
+    def add_callback(cls, func):
+        cls.callbacks.append(func)
+        
+    @classmethod
+    def notify(self, event:str, **kwargs):
+        for func in self.callbacks:
+            func(self, event, **kwargs)     
+        
     @classmethod                 
     def parse_input(cls, tasks:Union[list,dict]) -> Union[list,dict]:
         
@@ -99,7 +110,7 @@ class Task:
         """
         graph = self._create_digraph()
         leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
-        return {n.name: n.result for n in leaf_nodes if n.__class__.__name__=="Parameter"}
+        return {n.name: n for n in leaf_nodes if n.__class__.__name__=="Parameter"}
                 
     @property
     def all_input_tasks(self)->list[any]:
@@ -189,6 +200,7 @@ class Task:
             return # no need to run it again if it already has run
         
         start = time.time()
+        self.notify("start", start=start)
         
         # First check if input data is valid
         for task in self.all_input_tasks:
@@ -198,12 +210,14 @@ class Task:
                 self.failed = True
                 self.has_run = True
                 self.read_from_cache = False
+                self.notify("failed")
                 return
         
         with open(self.log_location.replace("{key}", "xyzflow"), "w") as log:
             with Cache(self.cache_location) as cache:
                         
-                key = self._calc_hash() # unique hash that contains run source code, class name and input state
+                self.key = self._calc_hash() # unique hash that contains run source code, class name and input state
+                self.notify("key")
                         
                 log.write(f"[INFO] Start execution of {self} at {start}\n")
                     
@@ -211,20 +225,21 @@ class Task:
                 self.read_from_cache = True
                 if not self.cacheable:
                     self.read_from_cache = False
-                if key not in cache:
+                if self.key not in cache:
                     self.read_from_cache = False
                 if self.invalidator and self.invalidator():
                     self.read_from_cache = False
                     log.write(f"[INFO] {self.__class__.__name__} - Invalidator returned True: Do not use the cache!\n")
                                     
                 if self.read_from_cache:
-                    data = cache.get(key)
+                    data = cache.get(self.key)
                     
                     self.result = data["result"]
                     self.failed = False
                     self.has_run = True
                     log.write(f"[INFO] {self.__class__.__name__}: {self} is read from cache: Result {self.result}\n")
                     self.execution_time = time.time() - start
+                    self.notify("cached")
                     return
                 
             
@@ -233,21 +248,24 @@ class Task:
                 self.in_progress = True
                 try:
                     self.result = self.run(*args, logger=log, **kwargs)
+                    self.notify("success")
                     
                     self.failed = False
                     if self.cacheable:
-                        cache.set(key, {
+                        cache.set(self.key, {
                             "result": self.result
                         })
                         log.write(f"[INFO] {self.__class__.__name__}: {self} Result has been written to the cache\n")  
                 except Exception as e:
                     self.failed = True
                     log.write(f"[ERROR] Exception occured in {self}: {e}\n") 
+                    self.notify("failed")
                 self.in_progress = False
                 self.has_run = True                
                 log.write(f"[INFO] {self.__class__.__name__}: {self} finished\n") 
     
             self.execution_time = time.time() - start      
+            self.notify("exec_time")
                 
             
     def __call__(self, *args: any, **kwargs: any) -> any:

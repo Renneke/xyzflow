@@ -16,7 +16,7 @@ from numpy import save, uint16
 sys.path.append("/Users/rennekef/Documents/Programming/xyzflow/public/xyzflow")
 from xyzflow import Flow, flow, Parameter, get_flow_parameter
 from xyzflow.Flow import load_parameters, save_parameters
-from xyzflow.xyzflow import load_flow
+from xyzflow.xyzflow import load_flow_from_file
 
 root = os.path.dirname(__file__)
 
@@ -35,6 +35,7 @@ class QLogger(logging.Handler):
             ui_file = QFile(ui_file)
             ui_file.open(QFile.ReadOnly)
             
+            loader = QUiLoader()
             page = loader.load(ui_file)
             page.setObjectName(log_name)
             
@@ -98,23 +99,25 @@ class XYZFlowGUI:
         
         self.matrix.refresh_scene()
         
-    def open_flow_(self, path_or_module:str):
-        self.flow = load_flow(path_or_module)
+    def open_flow_from_file(self, path:str):
+        self.flow = load_flow_from_file(path)
         
         self.path_para = path+".json"
-        # First try to load 
-        try:
-            load_parameters(self.path_para)
-        except:        
-            load_parameters(self.path_para)
-            print("Saving")
-            save_parameters(self.flow, self.path_para)
-        
+        # First try to load
+        print(f"Trying to load parameters from path: {self.path_para}")
+        if not load_parameters(self.path_para):
+            print(f"{self.path_para} cannot be loaded.")
+            self.path_para = os.path.basename(self.path_para)
+            print(f"Looking locally at: {self.path_para}")
+            if not load_parameters(self.path_para):
+                print(f"Need to retrieve parameters by executing it as much as necessary. Results are saved here: {self.path_para}")
+                save_parameters(self.flow, self.path_para)
+                print(f"Saving to {self.path_para}. Deliver this file with your task module to speed up execution on the users side.")
+                load_parameters(self.path_para) # Read it again to populate the global space correctly
+                
+                
         self.refresh_flow_parameter()
         self.refresh_flow_chart()
-        
-        
-    
         
     def show(self):
         self.ui.show()
@@ -123,6 +126,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     gui = XYZFlowGUI() 
-    gui.open_flow("../../tests/flowB.py")     
+    gui.open_flow_from_file("../../tests/flowB.py")     
     gui.show()
     sys.exit(app.exec())
