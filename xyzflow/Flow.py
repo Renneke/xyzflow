@@ -10,6 +10,8 @@ class Flow:
     """Abstract class to define a Flow.
     Just override the `main()` method.
     """
+    __identifier__ = "XYZFLOW"
+    
     def main(self) -> Task:
         """Override this main method
 

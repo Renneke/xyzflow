@@ -11,32 +11,17 @@ from datetime import datetime
 import sys
 import os
 
-from numpy import uint16
+from numpy import save, uint16
 
 sys.path.append("/Users/rennekef/Documents/Programming/xyzflow/public/xyzflow")
 from xyzflow import Flow, flow, Parameter, get_flow_parameter
-from xyzflow.Flow import load_parameters, create_parameters
+from xyzflow.Flow import load_parameters, save_parameters
+from xyzflow.xyzflow import load_flow
 
 root = os.path.dirname(__file__)
 
 from ParametersWidget import populate_tree
 from QStageWidget import QRowWidget, QTaskWidget, QTaskMatrix
-
-
-class FlowA(Flow):
-    def main(self):
-        a = Parameter.create(name="a", value="hello")        
-        b = Parameter.create(name="b", value="world")        
-        return a+b
-
-class FlowB(Flow):
-    def main(self):
-        x = Parameter.create(name="x", value="some")        
-        y = Parameter.create(name="y", value="thing") 
-        
-        z = flow(FlowA, "hallo", a=x)       
-        return x+y+z
-    
 class QLogger(logging.Handler):
     def __init__(self, tabWidget_logger):
         super().__init__()
@@ -46,7 +31,6 @@ class QLogger(logging.Handler):
         page = self.tabWidget_logger.findChild(QWidget, log_name)
         
         if not page:
-            
             ui_file = os.path.join(root, "logPage.ui")
             ui_file = QFile(ui_file)
             ui_file.open(QFile.ReadOnly)
@@ -71,12 +55,13 @@ class QLogger(logging.Handler):
         
         
 class XYZFlowGUI:
-    def __init__(self, loader, cache_dir:str=".xyzcache", ) -> None:
+    def __init__(self) -> None:
+        loader = QUiLoader()
         ui_file = os.path.join(root, "Window.ui")
         ui_file = QFile(ui_file)
         ui_file.open(QFile.ReadOnly)
         self.ui = loader.load(ui_file)
-        self.cache_dir = cache_dir
+        
         
         # Setup a logger
         self.ui.tabWidget_logger.clear()        
@@ -89,15 +74,11 @@ class XYZFlowGUI:
         self.ui.flowchart_graphicsView.setScene(self.scene)
 
         self.matrix = QTaskMatrix(self.scene)
-
-        if self.cache_dir:
-            self.refresh_flow_parameter()
-            self.refresh_flow_chart()
             
         self.ui.tabWidget_logger.tabCloseRequested.connect(self.close_log_handler)
 
     def refresh_flow_parameter(self):        
-        populate_tree(self.ui.parameter_treeWidget, self.flow_ref)
+        populate_tree(self.ui.parameter_treeWidget, self.flow)
        
     def close_log_handler(self, index):
         page = self.ui.tabWidget_logger.findChild(QWidget, self.ui.tabWidget_logger.tabText(index))
@@ -108,8 +89,6 @@ class XYZFlowGUI:
         
         self.matrix.clear_matrix()
         
-        import ipdb
-        ipdb.set_trace()
         self.matrix.add_task("hallo1", 0)
         self.matrix.add_task("hallo2", 0)
         self.matrix.add_task("hallo3", 0)
@@ -119,6 +98,22 @@ class XYZFlowGUI:
         
         self.matrix.refresh_scene()
         
+    def open_flow_(self, path_or_module:str):
+        self.flow = load_flow(path_or_module)
+        
+        self.path_para = path+".json"
+        # First try to load 
+        try:
+            load_parameters(self.path_para)
+        except:        
+            load_parameters(self.path_para)
+            print("Saving")
+            save_parameters(self.flow, self.path_para)
+        
+        self.refresh_flow_parameter()
+        self.refresh_flow_chart()
+        
+        
     
         
     def show(self):
@@ -126,11 +121,8 @@ class XYZFlowGUI:
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    loader = QUiLoader()
     
-    
-    create_parameters(FlowB, FlowB().main())
-    
-    #gui = XYZFlowGUI(loader, FlowB)   
-    #gui.show()
-    #sys.exit(app.exec())
+    gui = XYZFlowGUI() 
+    gui.open_flow("../../tests/flowB.py")     
+    gui.show()
+    sys.exit(app.exec())

@@ -53,10 +53,6 @@ class CustomTreeItem( QTreeWidgetItem ):
 
 def populate_tree(treeWidget, flow):
     
-    if not load_parameters(flow):    
-        para = get_flow_parameter(flow)
-    else:
-        para = Parameter.parameters
         
     def iter_item(root):    
         for i in range(root.childCount()):
