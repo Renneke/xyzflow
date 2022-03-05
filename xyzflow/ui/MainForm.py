@@ -2,7 +2,7 @@ from PySide6.QtWidgets import QApplication, QSpinBox, QVBoxLayout, QPushButton, 
 from PySide6.QtGui import QPen, QColor, QFontMetrics
 from PySide6 import QtCore
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtCore import QFile
+from PySide6.QtCore import QFile, Signal, QObject
 from PySide6 import QtCore, QtGui
 import logging
 from datetime import datetime
@@ -14,7 +14,7 @@ import os
 from numpy import save, uint16
 
 sys.path.append("/Users/rennekef/Documents/Programming/xyzflow/public/xyzflow")
-from xyzflow import Flow, flow, Parameter, get_flow_parameter
+from xyzflow import Flow, flow, Parameter, get_flow_parameter, Task
 from xyzflow.Flow import load_parameters, save_parameters
 from xyzflow.xyzflow import load_flow_from_file
 
@@ -22,6 +22,12 @@ root = os.path.dirname(__file__)
 
 from ParametersWidget import populate_tree
 from QStageWidget import QRowWidget, QTaskWidget, QTaskMatrix
+
+import resource
+
+
+logger = logging.getLogger('xyzflow')
+
 class QLogger(logging.Handler):
     def __init__(self, tabWidget_logger):
         super().__init__()
@@ -55,28 +61,42 @@ class QLogger(logging.Handler):
         item.setText(4, record.msg)
         
         
-class XYZFlowGUI:
-    def __init__(self) -> None:
+class XYZFlowGUI(QObject): 
+    redraw_flowchart = Signal(Task, str)
+    
+    def __init__(self) -> None:                                 
+        super(XYZFlowGUI, self).__init__()  
         loader = QUiLoader()
         ui_file = os.path.join(root, "Window.ui")
         ui_file = QFile(ui_file)
         ui_file.open(QFile.ReadOnly)
         self.ui = loader.load(ui_file)
         
+        Task.add_callback(self.task_callback) 
+        self.redraw_flowchart.connect(self.redraw_flowchart_slot) 
         
         # Setup a logger
         self.ui.tabWidget_logger.clear()        
-        logger = logging.getLogger('xyzflow')
+        
         logger.setLevel(logging.DEBUG)        
         qlogger = QLogger(self.ui.tabWidget_logger)
         logger.addHandler(qlogger)
         
         self.scene = QGraphicsScene()
         self.ui.flowchart_graphicsView.setScene(self.scene)
+        
+        self.ui.actionRun.triggered.connect(self.run_flow)
 
         self.matrix = QTaskMatrix(self.scene)
+        self.matrix.clear_matrix()
+        self.matrix.refresh_scene()
             
         self.ui.tabWidget_logger.tabCloseRequested.connect(self.close_log_handler)
+
+    def run_flow(self):
+        print("Running flow")
+        logger.info("Start running the flow")
+        logger.info(str(self.flow.main()()))
 
     def refresh_flow_parameter(self):        
         populate_tree(self.ui.parameter_treeWidget, self.flow)
@@ -86,18 +106,15 @@ class XYZFlowGUI:
         page.deleteLater()
         self.ui.tabWidget_logger.removeTab(index)
 
-    def refresh_flow_chart(self):
-        
-        self.matrix.clear_matrix()
-        
-        self.matrix.add_task("hallo1", 0)
-        self.matrix.add_task("hallo2", 0)
-        self.matrix.add_task("hallo3", 0)
-        
-        self.matrix.add_task("hallo5", 1)
-        self.matrix.add_task("hallo4", 2)
-        
+    def redraw_flowchart_slot(self, task, event):
+        logger.info(event)
+        if event=="start":
+            self.matrix.add_task(task, task.step)
         self.matrix.refresh_scene()
+    
+    def task_callback(self, task, event, **kwargs):
+        self.redraw_flowchart.emit(task, event)
+        
         
     def open_flow_from_file(self, path:str):
         self.flow = load_flow_from_file(path)
@@ -114,10 +131,8 @@ class XYZFlowGUI:
                 save_parameters(self.flow, self.path_para)
                 print(f"Saving to {self.path_para}. Deliver this file with your task module to speed up execution on the users side.")
                 load_parameters(self.path_para) # Read it again to populate the global space correctly
-                
-                
+                       
         self.refresh_flow_parameter()
-        self.refresh_flow_chart()
         
     def show(self):
         self.ui.show()
@@ -126,6 +141,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     
     gui = XYZFlowGUI() 
-    gui.open_flow_from_file("../../tests/flowB.py")     
+    gui.open_flow_from_file("../../tests/flowC.py")     
     gui.show()
     sys.exit(app.exec())

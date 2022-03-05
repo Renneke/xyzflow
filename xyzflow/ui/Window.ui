@@ -158,7 +158,7 @@
           <x>0</x>
           <y>0</y>
           <width>282</width>
-          <height>231</height>
+          <height>241</height>
          </rect>
         </property>
         <layout class="QVBoxLayout" name="verticalLayout_7">
@@ -326,8 +326,15 @@
    <addaction name="actionRun"/>
   </widget>
   <action name="actionOpen_Flow">
+   <property name="icon">
+    <iconset resource="resource.qrc">
+     <normaloff>:/images/open.png</normaloff>:/images/open.png</iconset>
+   </property>
    <property name="text">
     <string>Open Flow</string>
+   </property>
+   <property name="shortcut">
+    <string>Meta+O</string>
    </property>
   </action>
   <action name="actionExit">
@@ -336,20 +343,33 @@
    </property>
   </action>
   <action name="actionSettings">
+   <property name="icon">
+    <iconset resource="resource.qrc">
+     <normaloff>:/images/settings.png</normaloff>:/images/settings.png</iconset>
+   </property>
    <property name="text">
     <string>Settings</string>
    </property>
   </action>
   <action name="actionRun">
+   <property name="icon">
+    <iconset resource="resource.qrc">
+     <normaloff>:/images/go.png</normaloff>:/images/go.png</iconset>
+   </property>
    <property name="text">
     <string>Run</string>
    </property>
    <property name="toolTip">
     <string>Run the flow</string>
    </property>
+   <property name="shortcut">
+    <string>Meta+R</string>
+   </property>
   </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="resource.qrc"/>
+ </resources>
  <connections>
   <connection>
    <sender>actionExit</sender>

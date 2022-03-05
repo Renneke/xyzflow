@@ -43,6 +43,7 @@ class Task:
         self.invalidator = invalidator
         self.cacheable = cacheable
         self.id = Task.unique_counter
+        self.step = -1   
         Task.unique_counter += 1
                         
         self.log_location = os.path.join(self.cache_location, f"{self.id}-{{key}}.log")
@@ -74,7 +75,6 @@ class Task:
     def add_callback(cls, func):
         cls.callbacks.append(func)
         
-    @classmethod
     def notify(self, event:str, **kwargs):
         for func in self.callbacks:
             func(self, event, **kwargs)     
@@ -196,11 +196,12 @@ class Task:
         Returns:
             _type_: _description_
         """
+        self.notify("start")
         if self.has_run:
+            self.notify("finished")
             return # no need to run it again if it already has run
         
         start = time.time()
-        self.notify("start", start=start)
         
         # First check if input data is valid
         for task in self.all_input_tasks:
@@ -280,11 +281,12 @@ class Task:
         # Go through the graph layer by layer
         # Each layer can be started in "parallel" (in multiple threads)
         # because they are independent
-        for steps in range(0, len(graph)):
+        for step in range(0, len(graph)):
             leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
             
             queue = []
             for i, node in enumerate(leaf_nodes):
+                node.step = step
                 thread = threading.Thread(target=node._run)
                 thread.start()
                 queue += [thread]
@@ -299,6 +301,7 @@ class Task:
             graph.remove_nodes_from(leaf_nodes)
             
         # Last but not least run the root node
+        self.step = step+1
         self._run(*args, **kwargs)               
         
         return self.result

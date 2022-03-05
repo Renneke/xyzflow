@@ -35,12 +35,11 @@ def get_task_from_flow(flow)->Task:
     Returns:
         Task: The result task of the flow
     """
-    if inspect.isclass(flow):
-        return flow().main()
-    elif inspect.ismodule(flow):
+    
+    if inspect.ismodule(flow):
         return flow.main()
     
-    raise Exception("First parameter has to be a module (defining a main()) or a class (defining a main())")
+    return flow.main()
 
 def save_parameters(flow, path:str):    
     """Save parameters of a flow to a file in json format
@@ -48,7 +47,7 @@ def save_parameters(flow, path:str):
     Args:
         flow (class or module): Flow to inspect
         path (str): Path to a json file that will be overwritten
-    """
+    """    
     result_task = get_task_from_flow(flow)
     with open(path, "w") as f:
         json.dump({k:v.to_dict() for k,v in result_task.get_parameters().items()}, f, indent=4)
