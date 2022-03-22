@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QApplication, QSpinBox, QVBoxLayout, QPushButton, QLineEdit, QWidget, QGraphicsView, QTreeWidgetItem, QGraphicsScene, QGraphicsRectItem, QGraphicsItem, QTreeWidget
+from PySide6.QtWidgets import QApplication, QLabel, QSpinBox, QVBoxLayout, QPushButton, QLineEdit, QWidget, QGraphicsView, QTreeWidgetItem, QGraphicsScene, QGraphicsRectItem, QGraphicsItem, QTreeWidget
 from PySide6.QtGui import QPen, QColor, QFontMetrics
 from PySide6 import QtCore
 from PySide6.QtUiTools import QUiLoader
@@ -27,11 +27,19 @@ import resource
 
 
 logger = logging.getLogger('xyzflow')
-
+ 
+# Signals must inherit QObject                              
+class Communicate(QObject):                                                 
+    log = Signal(logging.LogRecord)
 class QLogger(logging.Handler):
+
     def __init__(self, tabWidget_logger):
         super().__init__()
+        
         self.tabWidget_logger = tabWidget_logger
+        self.signals = Communicate()
+        self.signals.log.connect(self.log_me)
+        
 
     def getTreeWidget(self, log_name):
         page = self.tabWidget_logger.findChild(QWidget, log_name)
@@ -49,20 +57,37 @@ class QLogger(logging.Handler):
 
         return page.findChild(QTreeWidget)            
 
+    def open_vscode(self, link):
+        logger.info(f"open: {link}")
+        os.system(f"python3 {os.path.dirname(__file__)}/editor.py {link}&")
+
     def emit(self, record):
-        
+        print(record)
+        self.signals.log.emit(record)
+
+    def log_me(self, record):
+
+        # Emitting
         treeWidget = self.getTreeWidget(record.name)
         
         item = QTreeWidgetItem(treeWidget)
         item.setText(0, str(datetime.fromtimestamp(record.created)))
         item.setText(1, record.levelname)
-        item.setText(2, record.filename)
+        
+        label = QLabel(f"""<a href="{record.pathname} {record.lineno}">{record.filename}</a>""")
+        label.setOpenExternalLinks(False)
+        label.linkActivated.connect(self.open_vscode)
+        treeWidget.setItemWidget(item, 2, label)
+        
         item.setText(3, str(record.lineno))
         item.setText(4, record.msg)
         
         
 class XYZFlowGUI(QObject): 
-    redraw_flowchart = Signal(Task, str)
+    """XYZFlowGUI
+    """
+
+    notifier = Signal(Task, str)
     
     def __init__(self) -> None:                                 
         super(XYZFlowGUI, self).__init__()  
@@ -72,8 +97,10 @@ class XYZFlowGUI(QObject):
         ui_file.open(QFile.ReadOnly)
         self.ui = loader.load(ui_file)
         
-        Task.add_callback(self.task_callback) 
-        self.redraw_flowchart.connect(self.redraw_flowchart_slot) 
+        Task._add_callback(self.task_notifier)
+        self.notifier.connect(self.task_notifier_slot)
+        #Task.register_logger.connect(self.register_logger) 
+        #Task.start.connect(self.task_start) 
         
         # Setup a logger
         self.ui.tabWidget_logger.clear()        
@@ -81,6 +108,7 @@ class XYZFlowGUI(QObject):
         logger.setLevel(logging.DEBUG)        
         qlogger = QLogger(self.ui.tabWidget_logger)
         logger.addHandler(qlogger)
+        
         
         self.scene = QGraphicsScene()
         self.ui.flowchart_graphicsView.setScene(self.scene)
@@ -93,10 +121,23 @@ class XYZFlowGUI(QObject):
             
         self.ui.tabWidget_logger.tabCloseRequested.connect(self.close_log_handler)
 
+    def task_notifier(self, logger_name, event):
+        self.notifier.emit(logger_name, event)
+
+    def task_notifier_slot(self, logger_name, event):
+        if event=="start":
+            print(logger_name)
+            task_logger = logging.getLogger(logger_name)
+            qlogger = QLogger(self.ui.tabWidget_logger)
+            task_logger.addHandler(qlogger)
+        print(event)
+        
     def run_flow(self):
+        self.matrix.clear_matrix()
         print("Running flow")
         logger.info("Start running the flow")
         logger.info(str(self.flow.main()()))
+        Task.unique_counter = 0
 
     def refresh_flow_parameter(self):        
         populate_tree(self.ui.parameter_treeWidget, self.flow)
@@ -106,15 +147,10 @@ class XYZFlowGUI(QObject):
         page.deleteLater()
         self.ui.tabWidget_logger.removeTab(index)
 
-    def redraw_flowchart_slot(self, task, event):
-        logger.info(event)
-        if event=="start":
-            self.matrix.add_task(task, task.step)
+    def task_start(self, task):
+        self.matrix.add_task(task, task.step)
         self.matrix.refresh_scene()
     
-    def task_callback(self, task, event, **kwargs):
-        self.redraw_flowchart.emit(task, event)
-        
         
     def open_flow_from_file(self, path:str):
         self.flow = load_flow_from_file(path)
@@ -133,6 +169,7 @@ class XYZFlowGUI(QObject):
                 load_parameters(self.path_para) # Read it again to populate the global space correctly
                        
         self.refresh_flow_parameter()
+        
         
     def show(self):
         self.ui.show()

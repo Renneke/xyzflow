@@ -38,13 +38,14 @@ class Parameter(Task):
         cls.parameters.update({Parameter.current_prefix+k:v for k,v in Task.parse_input(parameters).items()})
         
     def __init__(self, name:str, value:any, description:str="") -> None:
-        super().__init__(cacheable=False)
         
         self.name = name
         self.description = description
+        self.value = value
+        
+        super().__init__(cacheable=False)
         
         # We know already the result -> no need to run it
-        self.value = value
         self.failed = False
         self.has_run = True
         self.read_from_cache = False
@@ -74,10 +75,10 @@ class Parameter(Task):
         """            
         name = Parameter.current_prefix + name
         
-        if name in Parameter.parameters:        
+        if name in Parameter.parameters:
             return Parameter.parameters[name]
                         
-        Parameter.parameters[name] = Parameter(name, value, description=description)                
+        Parameter.parameters[name] = Parameter(name, value, description=description)
         return Parameter.parameters[name]
                                
     def __repr__(self) -> str:
