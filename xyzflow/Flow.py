@@ -35,9 +35,9 @@ def get_task_from_flow(flow)->Task:
     Returns:
         Task: The result task of the flow
     """
-    
-    if inspect.ismodule(flow):
-        return flow.main()
+
+    if inspect.isclass(flow):
+        return flow().main()
     
     return flow.main()
 

@@ -4,7 +4,7 @@ this_directory = Path(__file__).parent
 long_description = (this_directory / "README.md").read_text()
 
 setup(name='xyzflow',
-      version='0.1',
+      version='0.2',
       description='Simple but powerful python orchestration framework',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -19,7 +19,8 @@ setup(name='xyzflow',
           'diskcache',
           'colorama',
           'tabulate',
-          'pandas'
+          'pandas',
+          "pyside6"
       ],
       entry_points = {
               'console_scripts': [

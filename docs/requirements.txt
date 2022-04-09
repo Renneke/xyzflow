@@ -7,3 +7,4 @@ diskcache
 colorama
 tabulate
 pandas
+pyside6

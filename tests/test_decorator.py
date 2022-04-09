@@ -3,11 +3,14 @@ from xyzflow import task, Parameter
 
 @task(cacheable=False)
 def power(a, n):
+    print("hi")
     return a**n
 
 @task(cacheable=True)
 def power2(a, n, logger):
-    logger.write("Example log")
+    print(f"hi: {logger}")
+    logger.info("Example log")
+    print("hi")
     return a**n*2
 
 def test_decorator():
