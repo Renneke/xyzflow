@@ -49,12 +49,12 @@ class Parameter(Task):
         self.failed = False
         self.has_run = True
         self.read_from_cache = False
-        self.result = self.value
+        self._result = self.value
         self.execution_time = 0
         
     def set(self, value):
         self.value = value
-        self.result = value        
+        self._result = value        
                
     def to_dict(self)->dict:
         """Convert this parameter to a dictionary so that it can be stored

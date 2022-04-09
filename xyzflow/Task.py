@@ -74,7 +74,7 @@ class Task:
         self.has_run = False
         self.read_from_cache = False
                 
-        self.result = None
+        self._result = None
 
         if task_name is None:
             self.task_name = self.__class__.__name__
@@ -92,6 +92,12 @@ class Task:
         self._notify("init") # gui will now register the logger
         self.task_logger.info(f"{self} created")
                    
+    @property
+    def result(self):
+        if not self.has_run:
+            raise Exception(f"You first have to run the task before you can access the result of {self.task_name}")
+        return self._result
+
     def __add__(self, other):
         import xyzflow.HelperTasks as HelperTasks
         return HelperTasks.Add(self, other)
@@ -273,10 +279,10 @@ class Task:
             if self.read_from_cache:
                 data = cache.get(self.key)
                 
-                self.result = data["result"]
+                self._result = data["result"]
                 self.failed = False
                 self.has_run = True
-                self.task_logger.info(f"{self.__class__.__name__}: {self} is read from cache: Result {self.result}\n")
+                self.task_logger.info(f"{self.__class__.__name__}: {self} is read from cache: Result {self._result}\n")
                 self.execution_time = time.time() - start
                 self._notify("cached")
                 return
@@ -286,13 +292,13 @@ class Task:
             self.task_logger.info(f"{self.__class__.__name__}: {self} starts\n")   
             self.in_progress = True
             try:
-                self.result = self.run(*args, logger=self.task_logger, **kwargs)
+                self._result = self.run(*args, logger=self.task_logger, **kwargs)
                 self._notify("success")
                 
                 self.failed = False
                 if self.cacheable:
                     cache.set(self.key, {
-                        "result": self.result
+                        "result": self._result
                     })
                     self.task_logger.info(f"{self.__class__.__name__}: {self} Result has been written to the cache\n")  
             except Exception as e:
@@ -348,7 +354,7 @@ class Task:
         logger.info(f"Final Step: {self.step}")
         self._run(*args, **kwargs)               
         
-        return self.result
+        return self._result
         
     def run(self, *args: any, **kwargs: any):
         """Run method (to be overwritten by tasks)
@@ -369,7 +375,7 @@ class Constant(Task):
         super().__init__(cacheable=False)
 
         self.failed = False        
-        self.result = value
+        self._result = value
             
         # We know already the result -> no need to run it
         self.has_run = True
@@ -377,7 +383,7 @@ class Constant(Task):
         self.execution_time = 0
         
     def __repr__(self) -> str:
-        return f"{self.result}"
+        return f"{self._result}"
     
     
     
@@ -394,8 +400,8 @@ class WrapperTask(Task):
         return f"{self.task_name}"
         
     def get_inputs(self):
-        args = [v.result for v in self.input_unnamed]
-        kwargs = {name: v.result for name, v in self.input_named.items()}
+        args = [v._result for v in self.input_unnamed]
+        kwargs = {name: v._result for name, v in self.input_named.items()}
         return args, kwargs
         
     def run(self, *args: any, **kwargs: any):
