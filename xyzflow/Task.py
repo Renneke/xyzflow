@@ -43,12 +43,13 @@ class Task:
             callback(self.task_logger_name, event)
             
     
-    def __init__(self, cacheable:bool=True, invalidator=None) -> None:
+    def __init__(self, cacheable:bool=True, invalidator=None, task_name:str=None) -> None:
         """Task Constructor
 
         Args:
             cacheable (bool, optional): _description_. Defaults to True.
             invalidator (_type_, optional): _description_. Defaults to None.
+            task_name (str, optional): Name of the task. Defaults to Classname.
         """
 
         self.input_unnamed : list[Task] = []
@@ -70,9 +71,14 @@ class Task:
                 
         self.result = None
 
+        if task_name is None:
+            self.task_name = self.__class__.__name__
+        else:
+            self.task_name = task_name
+
         # Init logging
-        self.log_location = os.path.join(self.cache_location, f"{self.id}-{self.__class__.__name__}.log")
-        self.task_logger_name = f"Task - {self.id} - {self.__class__.__name__}"
+        self.log_location = os.path.join(self.cache_location, f"{self.id}-{self.task_name}.log")
+        self.task_logger_name = f"Task - {self.id} - {self.task_name}"
         self.task_logger = logging.getLogger(self.task_logger_name)
         handle = logging.FileHandler(self.log_location)
         self.task_logger.addHandler(handle)
@@ -371,44 +377,56 @@ class Constant(Task):
     
     
     
+class WrapperTask(Task):
+    def __init__(self, func, cacheable, invalidator, task_name, *args, **kwargs) -> None:
+        super().__init__(cacheable, invalidator, task_name=task_name)
 
-def task(cacheable=True):
+        self.input_unnamed = self.parse_input(args)
+        self.input_named = self.parse_input(kwargs)
+        self.func = func
+        
+    def __repr__(self) -> str:
+        return f"{self.task_name}"
+        
+    def get_inputs(self):
+        args = [v.result for v in self.input_unnamed]
+        kwargs = {name: v.result for name, v in self.input_named.items()}
+        return args, kwargs
+        
+    def run(self, *args: any, **kwargs: any):
+        # retrieve the inputs from self.input_named and self.input_unnamed
+        list_input, dict_input = self.get_inputs()
+        
+        # Inspect the arguments
+        # Run is called e.g. with a logger in kwargs
+        # Therefore, we have to make sure that kwargs does not contain logger if
+        args_signiture = inspect.signature(self.func)
+        to_be_deleted = [k for k in kwargs.keys() if k not in args_signiture.parameters]
+        for key in to_be_deleted:
+            kwargs.pop(key)
+            
+        return self.func(*list_input, *args, **dict_input, **kwargs)
+
+
+def task(cacheable=True, invalidator=None, task_name=None):
     """Task decorator
 
     Args:
         cacheable (bool, optional): Is this task cacheable? Defaults to True.
-    """
+    """  
     
+
     def inner(func):
-        taskname = func.__name__
-        
-        class WrapperTask(Task):
-            def __init__(self, cacheable, *args, **kwargs) -> None:
-                super().__init__(cacheable)
-                self.input_unnamed = self.parse_input(args)
-                self.input_named = self.parse_input(kwargs)
-                
-            def __repr__(self) -> str:
-                return f"{taskname}"
-                
-            def get_inputs(self):
-                args = [v.result for v in self.input_unnamed]
-                kwargs = {name: v.result for name, v in self.input_named.items()}
-                return args, kwargs
-                
-            def run(self, *args: any, **kwargs: any):
-                list_input, dict_input = self.get_inputs()
-                
-                args_signiture = inspect.signature(func)
-                
-                to_be_deleted = [k for k in kwargs.keys() if k not in args_signiture.parameters]
-                for key in to_be_deleted:
-                    kwargs.pop(key)
-                    
-                return func(*list_input, *args, **dict_input, **kwargs)
-    
         def factory(*args, **kwargs):
-            return WrapperTask(cacheable, *args, **kwargs)
+            nonlocal func
+            nonlocal cacheable
+            nonlocal invalidator
+            nonlocal task_name
+
+            if task_name is None:
+                task_name = func.__name__
+            
+            return WrapperTask(func, cacheable, invalidator, task_name, *args, **kwargs)
     
         return factory
     

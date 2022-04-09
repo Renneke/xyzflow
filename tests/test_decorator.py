@@ -6,7 +6,7 @@ def power(a, n):
     print("hi")
     return a**n
 
-@task(cacheable=True)
+@task(cacheable=True, task_name="HolyPower")
 def power2(a, n, logger):
     print(f"hi: {logger}")
     logger.info("Example log")
