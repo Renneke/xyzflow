@@ -14,6 +14,9 @@ import time
 import os
 from colorama import Back, Style
 from tabulate import tabulate
+import logging
+
+logger = logging.getLogger('xyzflow')
 
 class Task:
     """Task
@@ -27,8 +30,18 @@ class Task:
     """
     unique_counter = 0
     cache_location = ".xyzcache" 
-    
     global_batch_count = 0 # keep track of the batch counter
+    
+    callbacks = [] # list of functions to call when certain events are happening
+    
+    @classmethod
+    def _add_callback(cls, callback):
+        cls.callbacks.append(callback)
+    
+    def _notify(self, event:str):
+        for callback in self.callbacks:
+            callback(self.task_logger_name, event)
+            
     
     def __init__(self, cacheable:bool=True, invalidator=None) -> None:
         """Task Constructor
@@ -37,15 +50,16 @@ class Task:
             cacheable (bool, optional): _description_. Defaults to True.
             invalidator (_type_, optional): _description_. Defaults to None.
         """
+
         self.input_unnamed : list[Task] = []
         self.input_named : dict[str, Task] = {}
         self.invalidator = invalidator
         self.cacheable = cacheable
         self.id = Task.unique_counter
+        self.step = -1   
+        self.key = None
         Task.unique_counter += 1
                         
-        self.log_location = os.path.join(self.cache_location, f"{self.id}-{{key}}.log")
-          
         os.makedirs(self.cache_location, exist_ok=True)
         
         self.execution_time = 0
@@ -55,6 +69,17 @@ class Task:
         self.read_from_cache = False
                 
         self.result = None
+
+        # Init logging
+        self.log_location = os.path.join(self.cache_location, f"{self.id}-{self.__class__.__name__}.log")
+        self.task_logger_name = f"Task - {self.id} - {self.__class__.__name__}"
+        self.task_logger = logging.getLogger(self.task_logger_name)
+        handle = logging.FileHandler(self.log_location)
+        self.task_logger.addHandler(handle)
+        self.task_logger.setLevel(level=logging.DEBUG)
+
+        self._notify("init") # gui will now register the logger
+        self.task_logger.info(f"{self} created")
                    
     def __add__(self, other):
         import xyzflow.HelperTasks as HelperTasks
@@ -66,8 +91,8 @@ class Task:
                    
     def __mul__(self, other):
         import xyzflow.HelperTasks as HelperTasks
-        return HelperTasks.Multiplication(self, other)
-
+        return HelperTasks.Multiplication(self, other)  
+        
     @classmethod                 
     def parse_input(cls, tasks:Union[list,dict]) -> Union[list,dict]:
         
@@ -99,7 +124,7 @@ class Task:
         """
         graph = self._create_digraph()
         leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
-        return {n.name: n.result for n in leaf_nodes if n.__class__.__name__=="Parameter"}
+        return {n.name: n for n in leaf_nodes if n.__class__.__name__=="Parameter"}
                 
     @property
     def all_input_tasks(self)->list[any]:
@@ -174,6 +199,19 @@ class Task:
             obj.append(input.__class__.__name__)
             obj.append(input.result)
         return f"{self.__class__.__name__}_{pickle.dumps(obj)}_{inspect.getsource(self.run)}"
+    
+    def remove_cache(self): 
+        if not self.key:
+            self.key = self._calc_hash()
+        with Cache(self.cache_location) as cache:   
+            if self.key in cache:
+                self.task_logger.info("Cache removed")
+                del cache[self.key]
+            else:
+                self.task_logger.warn(f"Could not remove cache of {self}")
+        self.has_run = False
+        self.read_from_cache = False
+        self.failed = False
         
         
     def _run(self, *args, **kwargs):
@@ -185,7 +223,11 @@ class Task:
         Returns:
             _type_: _description_
         """
+        
+        self._notify("start")
+        
         if self.has_run:
+            self._notify("finished")
             return # no need to run it again if it already has run
         
         start = time.time()
@@ -198,59 +240,64 @@ class Task:
                 self.failed = True
                 self.has_run = True
                 self.read_from_cache = False
+                self._notify("failed")
                 return
+
+        with Cache(self.cache_location) as cache:
+                    
+            self.key = self._calc_hash() # unique hash that contains run source code, class name and input state
+                    
+            self.task_logger.info(f"Start execution of {self} at {start}\n")
+                
+            # check if task is already in the cache
+            self.read_from_cache = True
+            if not self.cacheable:
+                self.read_from_cache = False
+            if self.key not in cache:
+                self.read_from_cache = False
+            if self.invalidator and self.invalidator():
+                self.read_from_cache = False
+                self.task_logger.info(f"{self.__class__.__name__} - Invalidator returned True: Do not use the cache!\n")
+                                
+            if self.read_from_cache:
+                data = cache.get(self.key)
+                
+                self.result = data["result"]
+                self.failed = False
+                self.has_run = True
+                self.task_logger.info(f"{self.__class__.__name__}: {self} is read from cache: Result {self.result}\n")
+                self.execution_time = time.time() - start
+                self._notify("cached")
+                return
+            
         
-        with open(self.log_location.replace("{key}", "xyzflow"), "w") as log:
-            with Cache(self.cache_location) as cache:
-                        
-                key = self._calc_hash() # unique hash that contains run source code, class name and input state
-                        
-                log.write(f"[INFO] Start execution of {self} at {start}\n")
-                    
-                # check if task is already in the cache
-                self.read_from_cache = True
-                if not self.cacheable:
-                    self.read_from_cache = False
-                if key not in cache:
-                    self.read_from_cache = False
-                if self.invalidator and self.invalidator():
-                    self.read_from_cache = False
-                    log.write(f"[INFO] {self.__class__.__name__} - Invalidator returned True: Do not use the cache!\n")
-                                    
-                if self.read_from_cache:
-                    data = cache.get(key)
-                    
-                    self.result = data["result"]
-                    self.failed = False
-                    self.has_run = True
-                    log.write(f"[INFO] {self.__class__.__name__}: {self} is read from cache: Result {self.result}\n")
-                    self.execution_time = time.time() - start
-                    return
+            self.task_logger.info(f"{self.__class__.__name__}: {self} not using cache because no suitable entry found\n")                                    
+            self.task_logger.info(f"{self.__class__.__name__}: {self} starts\n")   
+            self.in_progress = True
+            try:
+                self.result = self.run(*args, logger=self.task_logger, **kwargs)
+                self._notify("success")
                 
+                self.failed = False
+                if self.cacheable:
+                    cache.set(self.key, {
+                        "result": self.result
+                    })
+                    self.task_logger.info(f"{self.__class__.__name__}: {self} Result has been written to the cache\n")  
+            except Exception as e:
+                self.failed = True
+                self.task_logger.critical(f"Exception occured in {self}: {e}\n") 
+                self._notify("failed")
+            self.in_progress = False
+            self.has_run = True                
+            self.task_logger.info(f"{self.__class__.__name__}: {self} finished\n") 
+
+        self.execution_time = time.time() - start      
+        self._notify("finished")
+        self._notify("exec_time")
             
-                log.write(f"[INFO] {self.__class__.__name__}: {self} not using cache because no suitable entry found\n")                                    
-                log.write(f"[INFO] {self.__class__.__name__}: {self} starts\n")   
-                self.in_progress = True
-                try:
-                    self.result = self.run(*args, logger=log, **kwargs)
-                    
-                    self.failed = False
-                    if self.cacheable:
-                        cache.set(key, {
-                            "result": self.result
-                        })
-                        log.write(f"[INFO] {self.__class__.__name__}: {self} Result has been written to the cache\n")  
-                except Exception as e:
-                    self.failed = True
-                    log.write(f"[ERROR] Exception occured in {self}: {e}\n") 
-                self.in_progress = False
-                self.has_run = True                
-                log.write(f"[INFO] {self.__class__.__name__}: {self} finished\n") 
-    
-            self.execution_time = time.time() - start      
-                
             
-    def __call__(self, *args: any, **kwargs: any) -> any:
+    def __call__(self, *args: any, notify_callback=None, **kwargs: any) -> any:
         """Call operator
 
         Returns:
@@ -262,14 +309,19 @@ class Task:
         # Go through the graph layer by layer
         # Each layer can be started in "parallel" (in multiple threads)
         # because they are independent
-        for steps in range(0, len(graph)):
+        
+        for step in range(0, len(graph)):
             leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
-            
+            if not leaf_nodes:
+                break
             queue = []
             for i, node in enumerate(leaf_nodes):
+                node.step = step
+                node.notify_callback = notify_callback
                 thread = threading.Thread(target=node._run)
                 thread.start()
                 queue += [thread]
+                logger.info(f"Step: {step}")
             for thread in queue:
                 thread.join()
             
@@ -281,6 +333,8 @@ class Task:
             graph.remove_nodes_from(leaf_nodes)
             
         # Last but not least run the root node
+        self.step = step
+        logger.info(f"Final Step: {self.step}")
         self._run(*args, **kwargs)               
         
         return self.result

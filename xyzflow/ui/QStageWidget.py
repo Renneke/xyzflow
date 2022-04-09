@@ -30,8 +30,16 @@ class QTaskWidget(QGraphicsItem):
         
         self.height = 50
         self.margin = 10
+        self.task = task
         self.name = task.__class__.__name__
-        self.state = self.FAIL
+        if not task.has_run:
+            self.state = self.NOT_RUN
+        elif task.failed:
+            self.state = self.FAIL
+        elif task.read_from_cache:
+            self.state = self.CACHED
+        else:
+            self.state = self.OK
         self.row = row
         self.clicked = False
         super().__init__()
@@ -75,6 +83,7 @@ class QTaskWidget(QGraphicsItem):
         self.update()
         
         logger.info("Task selected")
+        self.task.remove_cache()
         
     def mouseReleaseEvent(self, evt):
         self.clicked = False
@@ -118,8 +127,8 @@ class QRowWidget(QGraphicsItem):
         
     @property
     def width(self):
-        view = self.scene().views()[0]
-        return view.width()
+        #view = self.scene().views()[0]
+        return 1000
             
     def boundingRect(self):
         return QtCore.QRectF(self.x0,self.y0,self.width,self.height)
@@ -142,7 +151,7 @@ class QRowWidget(QGraphicsItem):
         painter.drawText(self.x0+10+15-tw/2, self.y1+10+15+th/2, number_str)
         
 class QTaskMatrix:
-    def __init__(self, scene) -> None:
+    def __init__(self, scene:QGraphicsScene) -> None:
         self.clear_matrix()
         self.scene = scene
         
@@ -161,6 +170,7 @@ class QTaskMatrix:
         
         
     def refresh_scene(self):
+        self.scene.clear()
         
         for i in self.matrix.keys():
             row = QRowWidget(i)

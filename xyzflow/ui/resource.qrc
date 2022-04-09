@@ -1,0 +1,7 @@
+<RCC>
+  <qresource prefix="images">
+    <file>settings.png</file>
+    <file>open.png</file>
+    <file>go.png</file>
+  </qresource>
+</RCC>

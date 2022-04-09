@@ -5,9 +5,21 @@ import pytest
 import os
 
 expected_result = """{
-    "XB": 10,
-    "YB": 10,
-    "flowA.YA": 10
+    "XB": {
+        "name": "XB",
+        "description": "X from Flow B",
+        "value": 10
+    },
+    "YB": {
+        "name": "YB",
+        "description": "",
+        "value": 10
+    },
+    "flowA.YA": {
+        "name": "flowA.YA",
+        "description": "",
+        "value": 10
+    }
 }"""
 
 def test_write_read_parameters():
@@ -21,10 +33,22 @@ def test_write_read_parameters():
     Parameter.reset()
     assert not Parameter.parameters
     load_parameters("parameters.json")
-    assert Parameter.parameters == {
-                                        "XB": 10,
-                                        "YB": 10,
-                                        "flowA.YA": 10
-                                    }
+    assert {k:v.to_dict() for k,v in Parameter.parameters.items()} == {
+    "XB": {
+        "name": "XB",
+        "description": "X from Flow B",
+        "value": 10
+    },
+    "YB": {
+        "name": "YB",
+        "description": "",
+        "value": 10
+    },
+    "flowA.YA": {
+        "name": "flowA.YA",
+        "description": "",
+        "value": 10
+    }
+}
     
     

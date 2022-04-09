@@ -39,7 +39,7 @@ class Sub(Task):
         sum = self.all_input_tasks[0].result
         for input in self.all_input_tasks[1:]:
             sum -= input.result  
-        logger.write("[INFO] Subtraction ok\n")
+        logger.info("Subtraction ok\n")
         return sum
     
 class Multiplication(Task):
