@@ -2,9 +2,7 @@
 # Parameter Page
 This is some introduction to Parameters in xyzflow.
 """
-from ast import Param
 from .Task import Task
-import inspect
 
 
 class Parameter(Task):
@@ -23,7 +21,7 @@ class Parameter(Task):
     """
     
     current_prefix = ""
-    parameters = {} # Global storage of parameters
+    parameters = {} # Global storage of parameters str->Parameter/Task
     
     @classmethod
     def reset(cls):
@@ -39,10 +37,11 @@ class Parameter(Task):
         """
         cls.parameters.update({Parameter.current_prefix+k:v for k,v in Task.parse_input(parameters).items()})
         
-    def __init__(self, name:str, value:any) -> None:
+    def __init__(self, name:str, value:any, description:str="") -> None:
         super().__init__(cacheable=False)
         
         self.name = name
+        self.description = description
         
         # We know already the result -> no need to run it
         self.value = value
@@ -54,19 +53,18 @@ class Parameter(Task):
                
         
     @classmethod    
-    def create(cls, name:str, value:any):        
+    def create(cls, name:str, value:any, description:str=""):        
         """
         Parameter factory. Must be used to support hierarchy
         """            
         name = Parameter.current_prefix + name
-        if name in Parameter.parameters:
-            para = Parameter.parameters[name] # completly replace this instance!
-            return para # nothing to anymore
-        else:
-            Parameter.parameters[name] = Parameter(name, value)
-                
+        
+        if name in Parameter.parameters:        
+            return Parameter.parameters[name]
+                        
+        Parameter.parameters[name] = Parameter(name, value, description=description)                
         return Parameter.parameters[name]
                                
     def __repr__(self) -> str:
-        return f"{self.name}: {self.value}"
+        return f"<Parameter: {self.name}: {self.value}>"
     

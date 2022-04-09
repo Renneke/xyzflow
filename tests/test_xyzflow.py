@@ -41,7 +41,7 @@ def test_add():
     a = Parameter(value=1, name="1")
     b = Parameter(value=2, name="2")
     c = a+b
-    assert c().result == 3
+    assert c() == 3
     
 def test_evaluated_value():
     Parameter.reset()
@@ -52,7 +52,7 @@ def test_evaluated_value():
     c.status()
     d = Add(c(), 4)
     d -= 5
-    assert d().result == 1
+    assert d() == 1
     d.status()
     d.has_run = False # invalidate task
     d()
@@ -62,8 +62,6 @@ def test_evaluated_value():
     x = Sub()
     y = x()
     assert x.failed == True
-    assert x.result == None
-    assert y.failed == True
     
     
 def test_error_in_task():
@@ -72,16 +70,16 @@ def test_error_in_task():
     x = Add(1, "STRING") # Can't be added    
     a = x()
     
-    assert a.result == None
+    assert a == None
     assert x.failed == True
     assert x.has_run == True
     
-    a.status()
-    b = a + 3
-    c = b()
-    assert b.result == None
+    x.status()
+    b = x + x
+    b()
     assert b.failed == True
     assert b.has_run == True
+    b.status()
     
 def test_cli(capsys):
     Parameter.reset()
@@ -89,5 +87,5 @@ def test_cli(capsys):
     
     sys.argv = ["", "parameters", "tests/flowA.py"]
     main()
-    assert  capsys.readouterr().out.strip() == "{'XA': 10, 'YA': 10}"
+    assert "{'XA': 10, 'YA': 10}" in capsys.readouterr().out.strip()
     

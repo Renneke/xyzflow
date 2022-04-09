@@ -3,8 +3,8 @@
 This is some introduction to Tasks in xyzflow.
 """
 
+import json
 from typing import Union
-from unittest import TextTestRunner
 import networkx as nx
 import threading
 from diskcache import Cache
@@ -26,12 +26,14 @@ class Task:
         _type_: _description_
     """
     unique_counter = 0
-            
-    def __init__(self, cache_location=".xyzcache", cacheable:bool=True, invalidator=None) -> None:
+    cache_location = ".xyzcache" 
+    
+    global_batch_count = 0 # keep track of the batch counter
+    
+    def __init__(self, cacheable:bool=True, invalidator=None) -> None:
         """Task Constructor
 
         Args:
-            cache_location (str, optional): _description_. Defaults to ".xyzcache".
             cacheable (bool, optional): _description_. Defaults to True.
             invalidator (_type_, optional): _description_. Defaults to None.
         """
@@ -41,14 +43,10 @@ class Task:
         self.cacheable = cacheable
         self.id = Task.unique_counter
         Task.unique_counter += 1
-        
-                
-        self.cache_location = cache_location
-        self.log_location = os.path.join(cache_location, f"{self.id}-{{key}}.log")
+                        
+        self.log_location = os.path.join(self.cache_location, f"{self.id}-{{key}}.log")
           
-        os.makedirs(self.cache_location, exist_ok=TextTestRunner)
-        # remove all existing logs for this task number
-        os.system(f"rm -rf \"{ self.log_location.replace('{key}', '*') }\"")
+        os.makedirs(self.cache_location, exist_ok=True)
         
         self.execution_time = 0
         self.in_progress = False
@@ -77,7 +75,7 @@ class Task:
             input = {}
             for name, task in tasks.items():
                 if not isinstance(task, Task):
-                    input[name] = EvaluatedValue(task) # convert to task if it is not one
+                    input[name] = Constant(task) # convert to task if it is not one
                 else:
                     input[name] = task
             return input
@@ -86,13 +84,22 @@ class Task:
             input = []
             for task in tasks:
                 if not isinstance(task, Task):
-                    input.append(EvaluatedValue(task)) # convert to task if it is not one
+                    input.append(Constant(task)) # convert to task if it is not one
                 else:
                     input.append(task)
             return input
         else:
             raise Exception("Parse inputs failed because the input argument is not a list or a dict!")
         
+    def get_parameters(self) -> dict:
+        """Create the current dependency graph and extract all leaf nodes of type Parameter = Parameters
+
+        Returns:
+            dict: All parameters in form of a dictionary
+        """
+        graph = self._create_digraph()
+        leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
+        return {n.name: n.result for n in leaf_nodes if n.__class__.__name__=="Parameter"}
                 
     @property
     def all_input_tasks(self)->list[any]:
@@ -123,7 +130,7 @@ class Task:
         color_map = ['blue' if node == self else 'green' for node in graph]     # pragma: no cover
         nx.draw(graph, with_labels=True, font_weight='bold', node_color=color_map) # pragma: no cover
         
-        import matplotlib.pyplot as plt
+        import matplotlib.pyplot as plt # pragma: no cover
         plt.show() # pragma: no cover
         
     def status(self):    
@@ -230,8 +237,7 @@ class Task:
                     self.failed = False
                     if self.cacheable:
                         cache.set(key, {
-                            "result": self.result,
-                            "inputs": self.all_input_tasks
+                            "result": self.result
                         })
                         log.write(f"[INFO] {self.__class__.__name__}: {self} Result has been written to the cache\n")  
                 except Exception as e:
@@ -260,18 +266,24 @@ class Task:
             leaf_nodes = [node for node in graph.nodes if graph.in_degree(node)!=0 and graph.out_degree(node)==0]
             
             queue = []
-            for node in leaf_nodes:
+            for i, node in enumerate(leaf_nodes):
                 thread = threading.Thread(target=node._run)
                 thread.start()
                 queue += [thread]
             for thread in queue:
                 thread.join()
-            graph.remove_nodes_from(leaf_nodes)
+            
+            # Dump out batch information
+            with open(os.path.join(self.cache_location, f"{Task.global_batch_count}-batch.json"), "wb") as f:
+                pickle.dump(leaf_nodes, f)
+            Task.global_batch_count += 1
                       
+            graph.remove_nodes_from(leaf_nodes)
+            
         # Last but not least run the root node
         self._run(*args, **kwargs)               
         
-        return EvaluatedValue(self.result, self)
+        return self.result
         
     def run(self, *args: any, **kwargs: any):
         """Run method (to be overwritten by tasks)
@@ -282,24 +294,17 @@ class Task:
         raise Exception(f"No run method has been implemented for {self.__class__.__name__}.") # pragma: no cover
 
 
-class EvaluatedValue(Task):
-    """Evaluated Value Task
+class Constant(Task):
+    """Constant
 
     Args:
         Task (_type_): _description_
     """
-    def __init__(self, value:any, parent_task:Task=None) -> None:
+    def __init__(self, value:any) -> None:
         super().__init__(cacheable=False)
 
-        self.failed = False
-        
+        self.failed = False        
         self.result = value
-        if parent_task:
-            self.input_named = {
-                "__do_not_execute": parent_task
-            }           
-            self.failed = parent_task.failed   # take over status of parent task  
-        
             
         # We know already the result -> no need to run it
         self.has_run = True
@@ -313,11 +318,10 @@ class EvaluatedValue(Task):
     
     
 
-def task(cache_location=".xyzflow", cacheable=True):
+def task(cacheable=True):
     """Task decorator
 
     Args:
-        cache_location (str, optional): Cache location of this task. Defaults to ".xyzflow".
         cacheable (bool, optional): Is this task cacheable? Defaults to True.
     """
     
@@ -325,8 +329,8 @@ def task(cache_location=".xyzflow", cacheable=True):
         taskname = func.__name__
         
         class WrapperTask(Task):
-            def __init__(self, cache_location, cacheable, *args, **kwargs) -> None:
-                super().__init__(cache_location, cacheable)
+            def __init__(self, cacheable, *args, **kwargs) -> None:
+                super().__init__(cacheable)
                 self.input_unnamed = self.parse_input(args)
                 self.input_named = self.parse_input(kwargs)
                 
@@ -350,7 +354,7 @@ def task(cache_location=".xyzflow", cacheable=True):
                 return func(*list_input, *args, **dict_input, **kwargs)
     
         def factory(*args, **kwargs):
-            return WrapperTask(cache_location, cacheable, *args, **kwargs)
+            return WrapperTask(cacheable, *args, **kwargs)
     
         return factory
     

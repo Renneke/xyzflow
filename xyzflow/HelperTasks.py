@@ -15,9 +15,12 @@ class Add(Task):
         self.input_unnamed = self.parse_input(args)
             
     def run(self, *args: any, **kwargs: any):
-        sum = 0
+        sum = None
         for input in self.all_input_tasks:
-            sum += input.result  
+            if sum is None:
+                sum = input.result
+            else:
+                sum += input.result  
         return sum
 
 class Sub(Task):
@@ -50,7 +53,10 @@ class Multiplication(Task):
         self.input_unnamed = self.parse_input(args)
             
     def run(self, *args: any, **kwargs: any):
-        mult = 1
+        mult = None
         for input in self.all_input_tasks:
-            mult *= input.result  
+            if mult is None:
+                mult = input.result
+            else:
+                mult *= input.result  
         return mult
