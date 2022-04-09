@@ -43,7 +43,7 @@ class Task:
             callback(self.task_logger_name, event)
             
     
-    def __init__(self, cacheable:bool=True, invalidator=None, task_name:str=None) -> None:
+    def __init__(self, cacheable:bool=True, invalidator=None, task_name:str=None, hash_func=None) -> None:
         """Task Constructor
 
         Args:
@@ -57,6 +57,11 @@ class Task:
         self.invalidator = invalidator
         self.cacheable = cacheable
         self.id = Task.unique_counter
+
+        if hash_func is None:
+            self.hash_func = self.run
+        else:
+            self.hash_func = hash_func
         self.step = -1   
         self.key = None
         Task.unique_counter += 1
@@ -379,7 +384,7 @@ class Constant(Task):
     
 class WrapperTask(Task):
     def __init__(self, func, cacheable, invalidator, task_name, *args, **kwargs) -> None:
-        super().__init__(cacheable, invalidator, task_name=task_name)
+        super().__init__(cacheable, invalidator, task_name=task_name, hash_func=func)
 
         self.input_unnamed = self.parse_input(args)
         self.input_named = self.parse_input(kwargs)
