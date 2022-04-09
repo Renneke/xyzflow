@@ -342,9 +342,6 @@ class Task:
             for thread in queue:
                 thread.join()
             
-            # Dump out batch information
-            with open(os.path.join(self.cache_location, f"{Task.global_batch_count}-batch.json"), "wb") as f:
-                pickle.dump(leaf_nodes, f)
             Task.global_batch_count += 1
                       
             graph.remove_nodes_from(leaf_nodes)
